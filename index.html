@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
+<title>Shot Log</title>
+
+<!-- iOS home-screen / status bar behavior -->
+<meta name="theme-color" content="#0d0d0d" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Shot Log" />
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+
+<link rel="manifest" href="manifest.json" />
+<link rel="icon" href="icons/icon-192.png" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+<header class="app-header">
+  <h1>Shot Log</h1>
+  <nav class="tabs" role="tablist">
+    <button class="tab-btn active" data-view="log" role="tab" aria-selected="true">Log Shot</button>
+    <button class="tab-btn" data-view="history" role="tab" aria-selected="false">History</button>
+  </nav>
+</header>
+
+<main>
+  <!-- LOG SHOT VIEW -->
+  <section id="view-log" class="view active">
+    <form id="shot-form" autocomplete="off">
+
+      <div class="field">
+        <label for="bean">Bean</label>
+        <input type="text" id="bean" name="bean" list="bean-list" placeholder="e.g. Sprout House Blend" required />
+        <datalist id="bean-list"></datalist>
+      </div>
+
+      <div class="field">
+        <label for="roastDate">Roast date</label>
+        <input type="date" id="roastDate" name="roastDate" />
+      </div>
+
+      <div class="row">
+        <div class="field">
+          <label for="doseGrams">Dose in (g)</label>
+          <input type="number" id="doseGrams" name="doseGrams" inputmode="decimal" step="0.1" min="0" placeholder="18.0" required />
+        </div>
+        <div class="field">
+          <label for="yieldGrams">Yield out (g)</label>
+          <input type="number" id="yieldGrams" name="yieldGrams" inputmode="decimal" step="0.1" min="0" placeholder="36.0" required />
+        </div>
+      </div>
+
+      <div class="field ratio-display" id="ratio-display" hidden>
+        Ratio <span id="ratio-value">—</span>
+      </div>
+
+      <div class="field">
+        <label for="grindSetting">Grind setting</label>
+        <input type="text" id="grindSetting" name="grindSetting" inputmode="decimal" placeholder="e.g. 3.2" />
+      </div>
+
+      <div class="row">
+        <div class="field">
+          <label for="preinfusionSec">Preinfusion (s)</label>
+          <input type="number" id="preinfusionSec" name="preinfusionSec" inputmode="decimal" step="0.5" min="0" placeholder="5" />
+        </div>
+        <div class="field">
+          <label for="shotTimeSec">Shot time (s)</label>
+          <input type="number" id="shotTimeSec" name="shotTimeSec" inputmode="decimal" step="0.5" min="0" placeholder="28" />
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="notes">Notes</label>
+        <textarea id="notes" name="notes" rows="3" placeholder="Roast profile, equipment, tasting notes..."></textarea>
+      </div>
+
+      <button type="submit" class="primary-btn">Save Shot</button>
+    </form>
+  </section>
+
+  <!-- HISTORY VIEW -->
+  <section id="view-history" class="view">
+    <div class="history-toolbar">
+      <input type="search" id="history-search" placeholder="Search bean or notes..." />
+      <div class="backup-btns">
+        <button id="export-btn" class="ghost-btn" type="button">Export</button>
+        <label class="ghost-btn file-label">
+          Import
+          <input type="file" id="import-input" accept="application/json" hidden />
+        </label>
+      </div>
+    </div>
+    <ul id="history-list" class="history-list"></ul>
+    <p id="history-empty" class="empty-state" hidden>No shots logged yet. Pull an espresso and log it above.</p>
+  </section>
+</main>
+
+<div id="detail-overlay" class="overlay" hidden>
+  <div class="detail-card">
+    <button id="detail-close" class="ghost-btn detail-close" type="button">Close</button>
+    <div id="detail-body"></div>
+    <div class="detail-actions">
+      <button id="detail-delete" class="danger-btn" type="button">Delete</button>
+    </div>
+  </div>
+</div>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>
