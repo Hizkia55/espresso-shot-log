@@ -42,15 +42,14 @@
         <input type="date" id="roastDate" name="roastDate" />
       </div>
 
-      <div class="row">
-        <div class="field">
-          <label for="doseGrams">Dose in (g)</label>
-          <input type="number" id="doseGrams" name="doseGrams" inputmode="decimal" step="0.1" min="0" placeholder="18.0" required />
-        </div>
-        <div class="field">
-          <label for="yieldGrams">Yield out (g)</label>
-          <input type="number" id="yieldGrams" name="yieldGrams" inputmode="decimal" step="0.1" min="0" placeholder="36.0" required />
-        </div>
+      <div class="field">
+        <label for="doseGrams">Dose in <span class="slider-value" id="doseGrams-value">18.0 g</span></label>
+        <input type="range" id="doseGrams" name="doseGrams" min="16" max="20" step="0.1" value="18.0" required />
+      </div>
+
+      <div class="field">
+        <label for="yieldGrams">Yield out (g)</label>
+        <input type="number" id="yieldGrams" name="yieldGrams" inputmode="decimal" step="0.1" min="0" placeholder="36.0" required />
       </div>
 
       <div class="field ratio-display" id="ratio-display" hidden>
@@ -58,19 +57,18 @@
       </div>
 
       <div class="field">
-        <label for="grindSetting">Grind setting</label>
-        <input type="text" id="grindSetting" name="grindSetting" inputmode="decimal" placeholder="e.g. 3.2" />
+        <label for="grindSetting">Grind setting (Vario VS4) <span class="slider-value" id="grindSetting-value">5.0</span></label>
+        <input type="range" id="grindSetting" name="grindSetting" min="0" max="10" step="0.5" value="5.0" />
       </div>
 
-      <div class="row">
-        <div class="field">
-          <label for="preinfusionSec">Preinfusion (s)</label>
-          <input type="number" id="preinfusionSec" name="preinfusionSec" inputmode="decimal" step="0.5" min="0" placeholder="5" />
-        </div>
-        <div class="field">
-          <label for="shotTimeSec">Shot time (s)</label>
-          <input type="number" id="shotTimeSec" name="shotTimeSec" inputmode="decimal" step="0.5" min="0" placeholder="28" />
-        </div>
+      <div class="field">
+        <label for="preinfusionSec">Preinfusion <span class="slider-value" id="preinfusionSec-value">0s</span></label>
+        <input type="range" id="preinfusionSec" name="preinfusionSec" min="0" max="7" step="1" value="0" />
+      </div>
+
+      <div class="field">
+        <label for="shotTimeSec">Shot time (s)</label>
+        <input type="number" id="shotTimeSec" name="shotTimeSec" inputmode="decimal" step="0.5" min="0" placeholder="28" />
       </div>
 
       <div class="field">

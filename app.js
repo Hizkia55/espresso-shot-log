@@ -43,11 +43,23 @@ function switchView(name) {
 /* ---------- log shot form ---------- */
 
 const form = document.getElementById('shot-form');
+const roastDateInput = document.getElementById('roastDate');
 const doseInput = document.getElementById('doseGrams');
+const doseValue = document.getElementById('doseGrams-value');
 const yieldInput = document.getElementById('yieldGrams');
+const grindInput = document.getElementById('grindSetting');
+const grindValue = document.getElementById('grindSetting-value');
+const preinfusionInput = document.getElementById('preinfusionSec');
+const preinfusionValue = document.getElementById('preinfusionSec-value');
 const ratioDisplay = document.getElementById('ratio-display');
 const ratioValue = document.getElementById('ratio-value');
 const beanList = document.getElementById('bean-list');
+
+function todayISO() {
+  const d = new Date();
+  const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
+  return local.toISOString().slice(0, 10);
+}
 
 function computeRatio(dose, yieldOut) {
   const d = parseFloat(dose);
@@ -66,8 +78,29 @@ function updateRatioDisplay() {
   }
 }
 
-doseInput.addEventListener('input', updateRatioDisplay);
+function updateDoseValue() {
+  doseValue.textContent = `${parseFloat(doseInput.value).toFixed(1)} g`;
+}
+
+function updateGrindValue() {
+  grindValue.textContent = parseFloat(grindInput.value).toFixed(1);
+}
+
+function updatePreinfusionValue() {
+  preinfusionValue.textContent = `${preinfusionInput.value}s`;
+}
+
+doseInput.addEventListener('input', () => { updateDoseValue(); updateRatioDisplay(); });
 yieldInput.addEventListener('input', updateRatioDisplay);
+grindInput.addEventListener('input', updateGrindValue);
+preinfusionInput.addEventListener('input', updatePreinfusionValue);
+
+function resetFormDefaults() {
+  roastDateInput.value = todayISO();
+  updateDoseValue();
+  updateGrindValue();
+  updatePreinfusionValue();
+}
 
 function refreshBeanList() {
   const names = [...new Set(shots.map((s) => s.bean).filter(Boolean))];
@@ -85,7 +118,7 @@ form.addEventListener('submit', async (e) => {
     roastDate: fd.get('roastDate') || '',
     doseGrams: fd.get('doseGrams') ? parseFloat(fd.get('doseGrams')) : null,
     yieldGrams: fd.get('yieldGrams') ? parseFloat(fd.get('yieldGrams')) : null,
-    grindSetting: (fd.get('grindSetting') || '').trim(),
+    grindSetting: fd.get('grindSetting') ? parseFloat(fd.get('grindSetting')) : null,
     preinfusionSec: fd.get('preinfusionSec') ? parseFloat(fd.get('preinfusionSec')) : null,
     shotTimeSec: fd.get('shotTimeSec') ? parseFloat(fd.get('shotTimeSec')) : null,
     notes: (fd.get('notes') || '').trim(),
@@ -96,6 +129,7 @@ form.addEventListener('submit', async (e) => {
   refreshBeanList();
 
   form.reset();
+  resetFormDefaults();
   ratioDisplay.hidden = true;
   switchView('history');
 });
@@ -170,6 +204,11 @@ const detailClose = document.getElementById('detail-close');
 const detailDelete = document.getElementById('detail-delete');
 let activeShotId = null;
 
+function formatGrind(grindSetting) {
+  if (grindSetting == null || grindSetting === '') return '—';
+  return typeof grindSetting === 'number' ? grindSetting.toFixed(1) : String(grindSetting);
+}
+
 function detailRow(label, value) {
   return `<div class="detail-row"><span>${label}</span><span>${escapeHtml(value)}</span></div>`;
 }
@@ -189,7 +228,7 @@ historyList.addEventListener('click', (e) => {
     ${detailRow('Dose in', shot.doseGrams != null ? `${shot.doseGrams} g` : '—')}
     ${detailRow('Yield out', shot.yieldGrams != null ? `${shot.yieldGrams} g` : '—')}
     ${detailRow('Ratio', ratio ? `1 : ${ratio.toFixed(2)}` : '—')}
-    ${detailRow('Grind setting', shot.grindSetting || '—')}
+    ${detailRow('Grind setting', formatGrind(shot.grindSetting))}
     ${detailRow('Preinfusion', shot.preinfusionSec != null ? `${shot.preinfusionSec} s` : '—')}
     ${detailRow('Shot time', shot.shotTimeSec != null ? `${shot.shotTimeSec} s` : '—')}
     ${shot.notes ? `<div class="detail-notes">${escapeHtml(shot.notes)}</div>` : ''}
@@ -253,6 +292,7 @@ document.getElementById('import-input').addEventListener('change', async (e) => 
 
 refreshBeanList();
 renderHistory();
+resetFormDefaults();
 document.getElementById('bean').focus({ preventScroll: true });
 
 if ('serviceWorker' in navigator) {
