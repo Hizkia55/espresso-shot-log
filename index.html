@@ -23,6 +23,7 @@
   <nav class="tabs" role="tablist">
     <button class="tab-btn active" data-view="log" role="tab" aria-selected="true">Log Shot</button>
     <button class="tab-btn" data-view="history" role="tab" aria-selected="false">History</button>
+    <button class="tab-btn" data-view="beans" role="tab" aria-selected="false">Beans</button>
   </nav>
 </header>
 
@@ -32,9 +33,11 @@
     <form id="shot-form" autocomplete="off">
 
       <div class="field">
-        <label for="bean">Bean</label>
-        <input type="text" id="bean" name="bean" list="bean-list" placeholder="e.g. Sprout House Blend" required />
-        <datalist id="bean-list"></datalist>
+        <label for="bean-select">Bean</label>
+        <select id="bean-select" name="beanId" required>
+          <option value="" disabled selected>Select a bean...</option>
+        </select>
+        <button type="button" id="add-bean-link" class="text-link">+ Add new bean</button>
       </div>
 
       <div class="field">
@@ -72,6 +75,27 @@
       </div>
 
       <div class="field">
+        <label for="brewMethod">Brew method</label>
+        <select id="brewMethod" name="brewMethod">
+          <option value="Espresso" selected>Espresso</option>
+          <option value="Filter">Filter</option>
+          <option value="Omni">Omni</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label>How did it taste?</label>
+        <div class="star-rating" id="shot-rating" data-value="0">
+          <button type="button" data-star="1" aria-label="1 star">★</button>
+          <button type="button" data-star="2" aria-label="2 stars">★</button>
+          <button type="button" data-star="3" aria-label="3 stars">★</button>
+          <button type="button" data-star="4" aria-label="4 stars">★</button>
+          <button type="button" data-star="5" aria-label="5 stars">★</button>
+        </div>
+        <input type="hidden" id="rating" name="rating" value="0" />
+      </div>
+
+      <div class="field">
         <label for="notes">Notes</label>
         <textarea id="notes" name="notes" rows="3" placeholder="Roast profile, equipment, tasting notes..."></textarea>
       </div>
@@ -95,6 +119,13 @@
     <ul id="history-list" class="history-list"></ul>
     <p id="history-empty" class="empty-state" hidden>No shots logged yet. Pull an espresso and log it above.</p>
   </section>
+
+  <!-- BEANS VIEW -->
+  <section id="view-beans" class="view">
+    <button id="new-bean-btn" class="primary-btn" type="button">+ Add Bean</button>
+    <ul id="bean-list-view" class="history-list"></ul>
+    <p id="beans-empty" class="empty-state" hidden>No beans in your catalog yet. Add one to start logging shots against it.</p>
+  </section>
 </main>
 
 <div id="detail-overlay" class="overlay" hidden>
@@ -103,6 +134,62 @@
     <div id="detail-body"></div>
     <div class="detail-actions">
       <button id="detail-delete" class="danger-btn" type="button">Delete</button>
+    </div>
+  </div>
+</div>
+
+<div id="bean-overlay" class="overlay" hidden>
+  <div class="detail-card">
+    <button id="bean-overlay-close" class="ghost-btn detail-close" type="button">Close</button>
+    <h2 id="bean-form-title">Add Bean</h2>
+    <form id="bean-form" autocomplete="off">
+      <div class="field">
+        <label for="bean-name">Name</label>
+        <input type="text" id="bean-name" name="name" placeholder="e.g. Ethiopia Guji" required />
+      </div>
+      <div class="field">
+        <label for="bean-roaster">Roaster</label>
+        <input type="text" id="bean-roaster" name="roaster" list="roaster-list" placeholder="e.g. Sprout" />
+        <datalist id="roaster-list"></datalist>
+      </div>
+      <div class="field">
+        <label for="bean-origin">Origin</label>
+        <input type="text" id="bean-origin" name="origin" list="origin-list" placeholder="e.g. Guji, Ethiopia" />
+        <datalist id="origin-list"></datalist>
+      </div>
+      <div class="field">
+        <label for="bean-process">Process</label>
+        <input type="text" id="bean-process" name="process" list="process-list" placeholder="e.g. Washed" />
+        <datalist id="process-list"></datalist>
+      </div>
+      <div class="field">
+        <label for="bean-variety">Variety</label>
+        <input type="text" id="bean-variety" name="variety" list="variety-list" placeholder="e.g. Heirloom" />
+        <datalist id="variety-list"></datalist>
+      </div>
+      <div class="field">
+        <label for="bean-elevation">Elevation</label>
+        <input type="text" id="bean-elevation" name="elevation" placeholder="e.g. 1900-2100 masl" />
+      </div>
+      <div class="field">
+        <label for="bean-price">Price</label>
+        <input type="text" id="bean-price" name="price" placeholder="e.g. €18 / 250g" />
+      </div>
+      <div class="field">
+        <label>Would you recommend it?</label>
+        <div class="star-rating" id="bean-rating" data-value="0">
+          <button type="button" data-star="1" aria-label="1 star">★</button>
+          <button type="button" data-star="2" aria-label="2 stars">★</button>
+          <button type="button" data-star="3" aria-label="3 stars">★</button>
+          <button type="button" data-star="4" aria-label="4 stars">★</button>
+          <button type="button" data-star="5" aria-label="5 stars">★</button>
+        </div>
+        <input type="hidden" id="bean-recommendRating" name="recommendRating" value="0" />
+      </div>
+      <button type="submit" class="primary-btn">Save Bean</button>
+    </form>
+    <div class="detail-actions">
+      <button id="bean-delete" class="danger-btn" type="button" hidden>Delete Bean</button>
     </div>
   </div>
 </div>
