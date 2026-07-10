@@ -30,15 +30,19 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      if (cached) return cached;
-      return fetch(event.request)
+    caches.open(CACHE_NAME).then(async (cache) => {
+      const cached = await cache.match(event.request);
+      // Stale-while-revalidate: serve the cached copy instantly (if any) but
+      // always refetch in the background so the *next* load has the latest
+      // app.js/styles.css without needing a manual CACHE_NAME bump.
+      const network = fetch(event.request)
         .then((response) => {
-          const copy = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+          if (response && response.ok) cache.put(event.request, response.clone());
           return response;
         })
         .catch(() => cached);
+      event.waitUntil(network);
+      return cached || network;
     })
   );
 });

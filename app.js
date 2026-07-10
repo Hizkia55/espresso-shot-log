@@ -3,6 +3,14 @@ import { get, set } from './lib/idb-keyval.js';
 const SHOTS_KEY = 'shots';
 const BEANS_KEY = 'beans';
 
+// crypto.randomUUID() only exists in secure contexts (HTTPS/localhost) — falls
+// back to a non-cryptographic id so logging still works over plain-HTTP LAN testing.
+function genId() {
+  return window.crypto && crypto.randomUUID
+    ? crypto.randomUUID()
+    : Date.now().toString(36) + Math.random().toString(36).slice(2);
+}
+
 /* ---------- storage ---------- */
 
 async function loadShots() {
@@ -181,7 +189,7 @@ beanForm.addEventListener('submit', async (e) => {
 
   const existing = editingBeanId ? beans.find((b) => b.id === editingBeanId) : null;
   const bean = {
-    id: editingBeanId || crypto.randomUUID(),
+    id: editingBeanId || genId(),
     name,
     roaster: (fd.get('roaster') || '').trim(),
     origin: (fd.get('origin') || '').trim(),
@@ -322,7 +330,7 @@ form.addEventListener('submit', async (e) => {
   const bean = beans.find((b) => b.id === beanId);
 
   const shot = {
-    id: crypto.randomUUID(),
+    id: genId(),
     timestamp: new Date().toISOString(),
     beanId,
     beanName: bean ? bean.name : '',
@@ -356,8 +364,18 @@ const searchInput = document.getElementById('history-search');
 function matchesSearch(shot, query) {
   if (!query) return true;
   const q = query.toLowerCase();
-  return getBeanLabel(shot).toLowerCase().includes(q) ||
-    (shot.notes || '').toLowerCase().includes(q);
+  const bean = beans.find((b) => b.id === shot.beanId);
+  const haystack = [
+    getBeanLabel(shot),
+    shot.notes,
+    shot.brewMethod,
+    shot.roastDate,
+    bean?.roaster,
+    bean?.origin,
+    bean?.process,
+    bean?.variety,
+  ];
+  return haystack.some((field) => (field || '').toLowerCase().includes(q));
 }
 
 function renderHistory() {
