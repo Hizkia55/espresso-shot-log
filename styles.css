@@ -51,16 +51,20 @@ body {
 .tabs {
   display: flex;
   gap: 4px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .tab-btn {
-  flex: 1;
+  flex: 1 0 auto;
+  min-width: fit-content;
   background: none;
   border: none;
   color: var(--text-dim);
   font-size: 0.95rem;
   font-weight: 500;
-  padding: 10px 0;
+  padding: 10px 12px;
+  white-space: nowrap;
   border-bottom: 2px solid transparent;
 }
 

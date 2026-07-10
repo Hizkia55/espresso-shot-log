@@ -95,9 +95,7 @@ function switchView(name) {
     b.setAttribute('aria-selected', String(active));
   });
   views.forEach((v) => v.classList.toggle('active', v.id === `view-${name}`));
-  if (name === 'log') {
-    document.getElementById('bean-select').focus({ preventScroll: true });
-  } else if (name === 'history') {
+  if (name === 'history') {
     renderHistory();
   } else if (name === 'beans') {
     renderBeans();
@@ -539,7 +537,6 @@ refreshBeanSelect();
 renderHistory();
 renderBeans();
 resetFormDefaults();
-document.getElementById('bean-select').focus({ preventScroll: true });
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
