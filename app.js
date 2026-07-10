@@ -48,6 +48,18 @@ function getBeanLabel(shot) {
   return 'Unknown bean';
 }
 
+// Days between the bean's roast date and when this shot was logged, so
+// history can surface how far off-roast a given dial-in was.
+function daysSinceRoast(shot) {
+  const bean = beans.find((b) => b.id === shot.beanId);
+  const roastDate = shot.roastDateAtLog || bean?.roastDate;
+  if (!roastDate) return null;
+  const roast = new Date(`${roastDate}T00:00:00`);
+  const shotDate = new Date(shot.timestamp);
+  const shotMidnight = new Date(shotDate.getFullYear(), shotDate.getMonth(), shotDate.getDate());
+  return Math.round((shotMidnight - roast) / 86400000);
+}
+
 /* ---------- shared helpers ---------- */
 
 function escapeHtml(str) {
@@ -154,6 +166,7 @@ function openBeanForm(bean) {
   beanFormTitle.textContent = bean ? 'Edit Bean' : 'Add Bean';
   beanForm.reset();
   beanForm.name.value = bean?.name || '';
+  beanForm.roastDate.value = bean?.roastDate || todayISO();
   beanForm.roaster.value = bean?.roaster || '';
   beanForm.origin.value = bean?.origin || '';
   beanForm.process.value = bean?.process || '';
@@ -191,6 +204,7 @@ beanForm.addEventListener('submit', async (e) => {
   const bean = {
     id: editingBeanId || genId(),
     name,
+    roastDate: fd.get('roastDate') || '',
     roaster: (fd.get('roaster') || '').trim(),
     origin: (fd.get('origin') || '').trim(),
     process: (fd.get('process') || '').trim(),
@@ -260,7 +274,6 @@ beanListView.addEventListener('click', (e) => {
 /* ---------- log shot form ---------- */
 
 const form = document.getElementById('shot-form');
-const roastDateInput = document.getElementById('roastDate');
 const doseInput = document.getElementById('doseGrams');
 const doseValue = document.getElementById('doseGrams-value');
 const yieldInput = document.getElementById('yieldGrams');
@@ -316,7 +329,6 @@ grindInput.addEventListener('input', updateGrindValue);
 preinfusionInput.addEventListener('input', updatePreinfusionValue);
 
 function resetFormDefaults() {
-  roastDateInput.value = todayISO();
   updateDoseValue();
   updateGrindValue();
   updatePreinfusionValue();
@@ -334,7 +346,9 @@ form.addEventListener('submit', async (e) => {
     timestamp: new Date().toISOString(),
     beanId,
     beanName: bean ? bean.name : '',
-    roastDate: fd.get('roastDate') || '',
+    // Snapshotting the roast date (like beanName) so history stays accurate
+    // even if the same catalog entry gets restocked with a fresh roast later.
+    roastDateAtLog: bean?.roastDate || '',
     doseGrams: fd.get('doseGrams') ? parseFloat(fd.get('doseGrams')) : null,
     yieldGrams: fd.get('yieldGrams') ? parseFloat(fd.get('yieldGrams')) : null,
     grindSetting: fd.get('grindSetting') ? parseFloat(fd.get('grindSetting')) : null,
@@ -369,7 +383,6 @@ function matchesSearch(shot, query) {
     getBeanLabel(shot),
     shot.notes,
     shot.brewMethod,
-    shot.roastDate,
     bean?.roaster,
     bean?.origin,
     bean?.process,
@@ -397,6 +410,7 @@ function renderHistory() {
   historyList.innerHTML = filtered.map((shot) => {
     const ratio = computeRatio(shot.doseGrams, shot.yieldGrams);
     const ratioStr = ratio ? `1:${ratio.toFixed(2)}` : '—';
+    const days = daysSinceRoast(shot);
     return `
       <li class="shot-card" data-id="${shot.id}">
         <div class="shot-card-top">
@@ -407,6 +421,7 @@ function renderHistory() {
           <span>${shot.doseGrams ?? '—'}g → ${shot.yieldGrams ?? '—'}g (${ratioStr})</span>
           <span>${shot.shotTimeSec ?? '—'}s</span>
           <span>${escapeHtml(shot.brewMethod || 'Espresso')}</span>
+          ${days != null ? `<span>${days}d off roast</span>` : ''}
           ${shot.rating ? starsHtml(shot.rating) : ''}
         </div>
         ${shot.notes ? `<div class="shot-card-notes">${escapeHtml(shot.notes)}</div>` : ''}
@@ -438,6 +453,7 @@ function beanInfoBlock(shot) {
   const bean = beans.find((b) => b.id === shot.beanId);
   if (!bean) return '';
   const rows = [
+    ['Roast date', bean.roastDate],
     ['Roaster', bean.roaster],
     ['Origin', bean.origin],
     ['Process', bean.process],
@@ -464,11 +480,12 @@ historyList.addEventListener('click', (e) => {
   activeShotId = shot.id;
 
   const ratio = computeRatio(shot.doseGrams, shot.yieldGrams);
+  const days = daysSinceRoast(shot);
   detailBody.innerHTML = `
     <h2>${escapeHtml(getBeanLabel(shot))}</h2>
     ${beanInfoBlock(shot)}
     ${detailRow('Logged', formatDate(shot.timestamp))}
-    ${detailRow('Roast date', shot.roastDate || '—')}
+    ${detailRow('Days off roast', days != null ? `${days} day${days === 1 ? '' : 's'}` : '—')}
     ${detailRow('Brew method', shot.brewMethod || 'Espresso')}
     ${detailRow('Dose in', shot.doseGrams != null ? `${shot.doseGrams} g` : '—')}
     ${detailRow('Yield out', shot.yieldGrams != null ? `${shot.yieldGrams} g` : '—')}
