@@ -6,9 +6,9 @@
 <title>Shot Log</title>
 
 <!-- iOS home-screen / status bar behavior -->
-<meta name="theme-color" content="#0d0d0d" />
+<meta name="theme-color" content="#f5ead8" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
 <meta name="apple-mobile-web-app-title" content="Shot Log" />
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
 
@@ -32,6 +32,11 @@
   <section id="view-log" class="view active">
     <form id="shot-form" autocomplete="off">
 
+      <div class="edit-banner" id="edit-banner" hidden>
+        <span id="edit-banner-text">Editing shot</span>
+        <button type="button" id="cancel-edit" class="text-link">Cancel</button>
+      </div>
+
       <div class="field">
         <label for="bean-select">Bean</label>
         <select id="bean-select" name="beanId" required>
@@ -41,41 +46,64 @@
       </div>
 
       <div class="field">
-        <label for="doseGrams">Dose in <span class="slider-value" id="doseGrams-value">18.0 g</span></label>
-        <input type="range" id="doseGrams" name="doseGrams" min="16" max="20" step="0.1" value="18.0" required />
+        <label>Brew method</label>
+        <div class="method-seg" id="method-seg">
+          <button type="button" class="seg-btn active" data-method="Espresso">Espresso</button>
+          <button type="button" class="seg-btn" data-method="Filter">Filter</button>
+        </div>
+        <input type="hidden" id="brewMethod" name="brewMethod" value="Espresso" />
       </div>
 
       <div class="field">
-        <label for="yieldGrams">Yield out (g)</label>
-        <input type="number" id="yieldGrams" name="yieldGrams" inputmode="decimal" step="0.1" min="0" placeholder="36.0" required />
-      </div>
-
-      <div class="field ratio-display" id="ratio-display" hidden>
-        Ratio <span id="ratio-value">—</span>
+        <label for="doseGrams"><span id="dose-label">Dose in</span> <span class="slider-value" id="doseGrams-value">18.0 g</span></label>
+        <div class="slider-row">
+          <button type="button" class="stepper-btn" data-target="doseGrams" data-dir="-1" aria-label="Decrease dose by 0.1">−</button>
+          <input type="range" id="doseGrams" name="doseGrams" min="16" max="20" step="0.1" value="18.0" required />
+          <button type="button" class="stepper-btn" data-target="doseGrams" data-dir="1" aria-label="Increase dose by 0.1">+</button>
+        </div>
       </div>
 
       <div class="field">
         <label for="grindSetting">Grind setting (Vario VS4) <span class="slider-value" id="grindSetting-value">4.0</span></label>
-        <input type="range" id="grindSetting" name="grindSetting" min="0" max="20" step="0.1" value="4.0" />
+        <div class="slider-row">
+          <button type="button" class="stepper-btn" data-target="grindSetting" data-dir="-1" aria-label="Finer by 0.1">−</button>
+          <input type="range" id="grindSetting" name="grindSetting" min="0" max="20" step="0.1" value="4.0" />
+          <button type="button" class="stepper-btn" data-target="grindSetting" data-dir="1" aria-label="Coarser by 0.1">+</button>
+        </div>
+        <span class="field-hint">Use − / + to fine-tune in exact 0.1 steps</span>
       </div>
 
-      <div class="field">
-        <label for="preinfusionSec">Preinfusion <span class="slider-value" id="preinfusionSec-value">0s</span></label>
-        <input type="range" id="preinfusionSec" name="preinfusionSec" min="0" max="7" step="1" value="0" />
+      <div id="espresso-fields">
+        <div class="field">
+          <label for="preinfusionSec">Preinfusion <span class="slider-value" id="preinfusionSec-value">0s</span></label>
+          <div class="slider-row">
+            <button type="button" class="stepper-btn" data-target="preinfusionSec" data-dir="-1" aria-label="Decrease preinfusion">−</button>
+            <input type="range" id="preinfusionSec" name="preinfusionSec" min="0" max="7" step="1" value="0" />
+            <button type="button" class="stepper-btn" data-target="preinfusionSec" data-dir="1" aria-label="Increase preinfusion">+</button>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="field">
+            <label for="shotTimeSec">Shot time (s)</label>
+            <input type="number" id="shotTimeSec" name="shotTimeSec" inputmode="decimal" step="0.5" min="0" placeholder="28" />
+          </div>
+          <div class="field">
+            <label for="yieldGrams">Yield out (g)</label>
+            <input type="number" id="yieldGrams" name="yieldGrams" inputmode="decimal" step="0.1" min="0" placeholder="36.0" />
+          </div>
+        </div>
       </div>
 
-      <div class="field">
-        <label for="shotTimeSec">Shot time (s)</label>
-        <input type="number" id="shotTimeSec" name="shotTimeSec" inputmode="decimal" step="0.5" min="0" placeholder="28" />
+      <div id="filter-fields" hidden>
+        <div class="field">
+          <label for="totalVolume">Total volume (ml)</label>
+          <input type="number" id="totalVolume" name="volumeMl" inputmode="decimal" step="10" min="0" value="250" placeholder="250" />
+        </div>
       </div>
 
-      <div class="field">
-        <label for="brewMethod">Brew method</label>
-        <select id="brewMethod" name="brewMethod">
-          <option value="Espresso" selected>Espresso</option>
-          <option value="Filter">Filter</option>
-          <option value="Omni">Omni</option>
-        </select>
+      <div class="field ratio-display" id="ratio-display" hidden>
+        Ratio <span id="ratio-value">—</span>
       </div>
 
       <div class="field">
@@ -95,7 +123,7 @@
         <textarea id="notes" name="notes" rows="3" placeholder="Roast profile, equipment, tasting notes..."></textarea>
       </div>
 
-      <button type="submit" class="primary-btn">Save Shot</button>
+      <button type="submit" class="primary-btn" id="save-btn">Save Shot</button>
     </form>
   </section>
 
@@ -128,6 +156,7 @@
     <button id="detail-close" class="ghost-btn detail-close" type="button">Close</button>
     <div id="detail-body"></div>
     <div class="detail-actions">
+      <button id="detail-edit" class="primary-btn" type="button">Edit Shot</button>
       <button id="detail-delete" class="danger-btn" type="button">Delete</button>
     </div>
   </div>
@@ -171,8 +200,19 @@
         <input type="text" id="bean-elevation" name="elevation" placeholder="e.g. 1900-2100 masl" />
       </div>
       <div class="field">
-        <label for="bean-price">Price</label>
-        <input type="text" id="bean-price" name="price" placeholder="e.g. €18 / 250g" />
+        <div class="label-row">
+          <label for="bean-priceAmount">Price</label>
+          <div class="method-seg small" id="currency-seg">
+            <button type="button" class="seg-btn active" data-currency="EUR">€ EUR</button>
+            <button type="button" class="seg-btn" data-currency="DKK">kr DKK</button>
+          </div>
+        </div>
+        <div class="row">
+          <input type="number" id="bean-priceAmount" name="priceAmount" inputmode="decimal" step="0.01" min="0" placeholder="Price" aria-label="Price amount" />
+          <input type="number" id="bean-bagGrams" name="bagGrams" inputmode="decimal" step="1" min="0" placeholder="Bag size (g)" aria-label="Bag size in grams" />
+        </div>
+        <p class="per100" id="per100-display" hidden></p>
+        <input type="hidden" id="bean-currency" name="currency" value="EUR" />
       </div>
       <div class="field">
         <label>Would you recommend it?</label>

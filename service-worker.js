@@ -1,4 +1,4 @@
-const CACHE_NAME = 'shot-log-v2';
+const CACHE_NAME = 'shot-log-v3';
 const APP_SHELL = [
   './',
   'index.html',

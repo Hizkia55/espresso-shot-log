@@ -2,9 +2,8 @@ import { get, set } from './lib/idb-keyval.js';
 
 const SHOTS_KEY = 'shots';
 const BEANS_KEY = 'beans';
+const EUR_DKK = 7.46; // DKK is pegged to the euro, so a fixed rate is fine
 
-// crypto.randomUUID() only exists in secure contexts (HTTPS/localhost) — falls
-// back to a non-cryptographic id so logging still works over plain-HTTP LAN testing.
 function genId() {
   return window.crypto && crypto.randomUUID
     ? crypto.randomUUID()
@@ -48,8 +47,6 @@ function getBeanLabel(shot) {
   return 'Unknown bean';
 }
 
-// Days between the bean's roast date and when this shot was logged, so
-// history can surface how far off-roast a given dial-in was.
 function daysSinceRoast(shot) {
   const bean = beans.find((b) => b.id === shot.beanId);
   const roastDate = shot.roastDateAtLog || bean?.roastDate;
@@ -79,6 +76,22 @@ function starsHtml(n) {
   let out = '<span class="stars-static">';
   for (let i = 1; i <= 5; i++) out += `<span class="${i <= n ? 'filled' : ''}">★</span>`;
   out += '</span>';
+  return out;
+}
+
+function money(a, cur) {
+  return cur === 'DKK' ? a.toFixed(2) + ' kr' : '€' + a.toFixed(2);
+}
+
+function per100Of(amt, grams, cur, withConversion) {
+  const a = parseFloat(amt), g = parseFloat(grams);
+  if (!a || !g) return '';
+  const c = cur === 'DKK' ? 'DKK' : 'EUR';
+  const per = a / g * 100;
+  let out = money(per, c) + ' / 100g';
+  if (withConversion) {
+    out += ' · ≈ ' + money(c === 'EUR' ? per * EUR_DKK : per / EUR_DKK, c === 'EUR' ? 'DKK' : 'EUR');
+  }
   return out;
 }
 
@@ -131,11 +144,38 @@ const beanNameInput = document.getElementById('bean-name');
 const beanDeleteBtn = document.getElementById('bean-delete');
 const beanListView = document.getElementById('bean-list-view');
 const beansEmpty = document.getElementById('beans-empty');
+const priceAmountInput = document.getElementById('bean-priceAmount');
+const bagGramsInput = document.getElementById('bean-bagGrams');
+const currencySeg = document.getElementById('currency-seg');
+const currencyInput = document.getElementById('bean-currency');
+const per100Display = document.getElementById('per100-display');
 const beanRatingWidget = initStarRating(
   document.getElementById('bean-rating'),
   document.getElementById('bean-recommendRating')
 );
 let editingBeanId = null;
+let beanCurrency = 'EUR';
+
+function setBeanCurrency(c) {
+  beanCurrency = c === 'DKK' ? 'DKK' : 'EUR';
+  currencyInput.value = beanCurrency;
+  currencySeg.querySelectorAll('.seg-btn').forEach((b) =>
+    b.classList.toggle('active', b.dataset.currency === beanCurrency));
+  updatePer100();
+}
+
+function updatePer100() {
+  const s = per100Of(priceAmountInput.value, bagGramsInput.value, beanCurrency, true);
+  per100Display.hidden = !s;
+  per100Display.textContent = s;
+}
+
+currencySeg.addEventListener('click', (e) => {
+  const b = e.target.closest('.seg-btn');
+  if (b) setBeanCurrency(b.dataset.currency);
+});
+priceAmountInput.addEventListener('input', updatePer100);
+bagGramsInput.addEventListener('input', updatePer100);
 
 function refreshBeanFieldLists() {
   const fields = [
@@ -172,7 +212,9 @@ function openBeanForm(bean) {
   beanForm.process.value = bean?.process || '';
   beanForm.variety.value = bean?.variety || '';
   beanForm.elevation.value = bean?.elevation || '';
-  beanForm.price.value = bean?.price || '';
+  priceAmountInput.value = bean?.priceAmount ?? '';
+  bagGramsInput.value = bean?.bagGrams ?? (bean ? '' : 250);
+  setBeanCurrency(bean?.currency || 'EUR');
   beanRatingWidget.setValue(bean?.recommendRating || 0);
   beanDeleteBtn.hidden = !bean;
   beanOverlay.hidden = false;
@@ -201,6 +243,8 @@ beanForm.addEventListener('submit', async (e) => {
   if (!name) return;
 
   const existing = editingBeanId ? beans.find((b) => b.id === editingBeanId) : null;
+  const priceAmount = fd.get('priceAmount') ? parseFloat(fd.get('priceAmount')) : null;
+  const bagGrams = fd.get('bagGrams') ? parseFloat(fd.get('bagGrams')) : null;
   const bean = {
     id: editingBeanId || genId(),
     name,
@@ -210,7 +254,13 @@ beanForm.addEventListener('submit', async (e) => {
     process: (fd.get('process') || '').trim(),
     variety: (fd.get('variety') || '').trim(),
     elevation: (fd.get('elevation') || '').trim(),
-    price: (fd.get('price') || '').trim(),
+    priceAmount,
+    bagGrams,
+    currency: beanCurrency,
+    // Composed display string, also keeps beans readable in old exports.
+    price: priceAmount != null
+      ? money(priceAmount, beanCurrency) + (bagGrams != null ? ` / ${bagGrams}g` : '')
+      : (existing?.price || ''),
     recommendRating: parseInt(fd.get('recommendRating'), 10) || 0,
     createdAt: existing?.createdAt || new Date().toISOString(),
   };
@@ -248,6 +298,8 @@ function renderBeans() {
   beanListView.innerHTML = sortedBeans().map((bean) => {
     const count = shots.filter((s) => s.beanId === bean.id).length;
     const sub = [bean.roaster, bean.origin].filter(Boolean).join(' · ');
+    const per100 = per100Of(bean.priceAmount, bean.bagGrams, bean.currency, false);
+    const priceLine = [bean.price, per100].filter(Boolean).join(' · ');
     return `
       <li class="shot-card" data-id="${bean.id}">
         <div class="shot-card-top">
@@ -256,7 +308,7 @@ function renderBeans() {
         ${sub ? `<div class="bean-card-sub">${escapeHtml(sub)}</div>` : ''}
         <div class="bean-card-meta">
           ${starsHtml(bean.recommendRating)}
-          ${bean.price ? `<span>${escapeHtml(bean.price)}</span>` : ''}
+          ${priceLine ? `<span>${escapeHtml(priceLine)}</span>` : ''}
           <span class="bean-card-count">${count} shot${count === 1 ? '' : 's'} logged</span>
         </div>
       </li>
@@ -276,17 +328,35 @@ beanListView.addEventListener('click', (e) => {
 const form = document.getElementById('shot-form');
 const doseInput = document.getElementById('doseGrams');
 const doseValue = document.getElementById('doseGrams-value');
+const doseLabel = document.getElementById('dose-label');
 const yieldInput = document.getElementById('yieldGrams');
 const grindInput = document.getElementById('grindSetting');
 const grindValue = document.getElementById('grindSetting-value');
 const preinfusionInput = document.getElementById('preinfusionSec');
 const preinfusionValue = document.getElementById('preinfusionSec-value');
+const shotTimeInput = document.getElementById('shotTimeSec');
+const volumeInput = document.getElementById('totalVolume');
+const methodSeg = document.getElementById('method-seg');
+const methodInput = document.getElementById('brewMethod');
+const espressoFields = document.getElementById('espresso-fields');
+const filterFields = document.getElementById('filter-fields');
 const ratioDisplay = document.getElementById('ratio-display');
 const ratioValue = document.getElementById('ratio-value');
+const editBanner = document.getElementById('edit-banner');
+const editBannerText = document.getElementById('edit-banner-text');
+const saveBtn = document.getElementById('save-btn');
 const shotRatingWidget = initStarRating(
   document.getElementById('shot-rating'),
   document.getElementById('rating')
 );
+
+let currentMethod = 'Espresso';
+let editingShotId = null;
+
+const DOSE_RANGE = {
+  Espresso: { min: 16, max: 20 },
+  Filter: { min: 12, max: 30 },
+};
 
 function todayISO() {
   const d = new Date();
@@ -294,18 +364,55 @@ function todayISO() {
   return local.toISOString().slice(0, 10);
 }
 
-function computeRatio(dose, yieldOut) {
+function setMethod(m) {
+  currentMethod = m === 'Filter' ? 'Filter' : 'Espresso';
+  methodInput.value = currentMethod;
+  methodSeg.querySelectorAll('.seg-btn').forEach((b) =>
+    b.classList.toggle('active', b.dataset.method === currentMethod));
+  const esp = currentMethod === 'Espresso';
+  espressoFields.hidden = !esp;
+  filterFields.hidden = esp;
+  doseLabel.textContent = esp ? 'Dose in' : 'Coffee dose in';
+  const r = DOSE_RANGE[currentMethod];
+  doseInput.min = r.min;
+  doseInput.max = r.max;
+  const v = Math.min(Math.max(parseFloat(doseInput.value) || 18, r.min), r.max);
+  doseInput.value = v.toFixed(1);
+  updateDoseValue();
+  updateRatioDisplay();
+}
+
+methodSeg.addEventListener('click', (e) => {
+  const b = e.target.closest('.seg-btn');
+  if (b) setMethod(b.dataset.method);
+});
+
+// − / + steppers: exact step increments so 4.3 is always 4.3.
+document.querySelectorAll('.stepper-btn').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    const input = document.getElementById(btn.dataset.target);
+    const step = parseFloat(input.step) || 1;
+    let v = (parseFloat(input.value) || 0) + Number(btn.dataset.dir) * step;
+    v = Math.round(v / step) * step;
+    v = Math.min(Math.max(v, parseFloat(input.min)), parseFloat(input.max));
+    input.value = String(Math.round(v * 100) / 100);
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+});
+
+function computeRatio(dose, out) {
   const d = parseFloat(dose);
-  const y = parseFloat(yieldOut);
-  if (!d || !y) return null;
-  return y / d;
+  const o = parseFloat(out);
+  if (!d || !o) return null;
+  return o / d;
 }
 
 function updateRatioDisplay() {
-  const ratio = computeRatio(doseInput.value, yieldInput.value);
+  const esp = currentMethod === 'Espresso';
+  const ratio = computeRatio(doseInput.value, esp ? yieldInput.value : volumeInput.value);
   if (ratio) {
     ratioDisplay.hidden = false;
-    ratioValue.textContent = `1 : ${ratio.toFixed(2)}`;
+    ratioValue.textContent = `1 : ${ratio.toFixed(esp ? 2 : 1)}`;
   } else {
     ratioDisplay.hidden = true;
   }
@@ -325,6 +432,7 @@ function updatePreinfusionValue() {
 
 doseInput.addEventListener('input', () => { updateDoseValue(); updateRatioDisplay(); });
 yieldInput.addEventListener('input', updateRatioDisplay);
+volumeInput.addEventListener('input', updateRatioDisplay);
 grindInput.addEventListener('input', updateGrindValue);
 preinfusionInput.addEventListener('input', updatePreinfusionValue);
 
@@ -335,37 +443,83 @@ function resetFormDefaults() {
   shotRatingWidget.setValue(0);
 }
 
+function exitEditMode() {
+  editingShotId = null;
+  editBanner.hidden = true;
+  saveBtn.textContent = 'Save Shot';
+}
+
+document.getElementById('cancel-edit').addEventListener('click', () => {
+  form.reset();
+  resetFormDefaults();
+  setMethod(currentMethod);
+  ratioDisplay.hidden = true;
+  exitEditMode();
+});
+
+function startEditShot(shot) {
+  editingShotId = shot.id;
+  setMethod(shot.brewMethod === 'Filter' ? 'Filter' : 'Espresso');
+  const select = document.getElementById('bean-select');
+  select.value = beans.some((b) => b.id === shot.beanId) ? shot.beanId : '';
+  doseInput.value = shot.doseGrams ?? 18;
+  grindInput.value = shot.grindSetting ?? 4;
+  preinfusionInput.value = shot.preinfusionSec ?? 0;
+  shotTimeInput.value = shot.shotTimeSec ?? '';
+  yieldInput.value = shot.yieldGrams ?? '';
+  volumeInput.value = shot.volumeMl ?? 250;
+  document.getElementById('notes').value = shot.notes || '';
+  shotRatingWidget.setValue(shot.rating || 0);
+  updateDoseValue();
+  updateGrindValue();
+  updatePreinfusionValue();
+  updateRatioDisplay();
+  editBannerText.textContent = `Editing shot · ${formatDate(shot.timestamp)}`;
+  editBanner.hidden = false;
+  saveBtn.textContent = 'Update Shot';
+  switchView('log');
+  window.scrollTo(0, 0);
+}
+
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
   const fd = new FormData(form);
   const beanId = fd.get('beanId') || null;
   const bean = beans.find((b) => b.id === beanId);
+  const esp = currentMethod === 'Espresso';
+  const existing = editingShotId ? shots.find((s) => s.id === editingShotId) : null;
 
   const shot = {
-    id: genId(),
-    timestamp: new Date().toISOString(),
+    id: existing?.id || genId(),
+    timestamp: existing?.timestamp || new Date().toISOString(),
+    editedAt: existing ? new Date().toISOString() : null,
     beanId,
-    beanName: bean ? bean.name : '',
-    // Snapshotting the roast date (like beanName) so history stays accurate
-    // even if the same catalog entry gets restocked with a fresh roast later.
-    roastDateAtLog: bean?.roastDate || '',
+    beanName: bean ? bean.name : (existing?.beanName || ''),
+    roastDateAtLog: existing?.roastDateAtLog || bean?.roastDate || '',
+    brewMethod: currentMethod,
     doseGrams: fd.get('doseGrams') ? parseFloat(fd.get('doseGrams')) : null,
-    yieldGrams: fd.get('yieldGrams') ? parseFloat(fd.get('yieldGrams')) : null,
     grindSetting: fd.get('grindSetting') ? parseFloat(fd.get('grindSetting')) : null,
-    preinfusionSec: fd.get('preinfusionSec') ? parseFloat(fd.get('preinfusionSec')) : null,
-    shotTimeSec: fd.get('shotTimeSec') ? parseFloat(fd.get('shotTimeSec')) : null,
-    brewMethod: fd.get('brewMethod') || 'Espresso',
+    preinfusionSec: esp && fd.get('preinfusionSec') ? parseFloat(fd.get('preinfusionSec')) : null,
+    shotTimeSec: esp && fd.get('shotTimeSec') ? parseFloat(fd.get('shotTimeSec')) : null,
+    yieldGrams: esp && fd.get('yieldGrams') ? parseFloat(fd.get('yieldGrams')) : null,
+    volumeMl: !esp && fd.get('volumeMl') ? parseFloat(fd.get('volumeMl')) : null,
     rating: fd.get('rating') ? parseInt(fd.get('rating'), 10) : 0,
     notes: (fd.get('notes') || '').trim(),
   };
 
-  shots.unshift(shot);
+  if (existing) {
+    shots = shots.map((s) => (s.id === shot.id ? shot : s));
+  } else {
+    shots.unshift(shot);
+  }
   await saveShots(shots);
   renderBeans();
 
   form.reset();
   resetFormDefaults();
+  setMethod(currentMethod);
   ratioDisplay.hidden = true;
+  exitEditMode();
   switchView('history');
 });
 
@@ -408,8 +562,11 @@ function renderHistory() {
   }
 
   historyList.innerHTML = filtered.map((shot) => {
-    const ratio = computeRatio(shot.doseGrams, shot.yieldGrams);
-    const ratioStr = ratio ? `1:${ratio.toFixed(2)}` : '—';
+    const isEsp = shot.brewMethod !== 'Filter';
+    const out = isEsp ? shot.yieldGrams : shot.volumeMl;
+    const ratio = computeRatio(shot.doseGrams, out);
+    const ratioStr = ratio ? `1:${ratio.toFixed(isEsp ? 2 : 1)}` : '—';
+    const outStr = isEsp ? `${shot.yieldGrams ?? '—'}g` : `${shot.volumeMl ?? '—'}ml`;
     const days = daysSinceRoast(shot);
     return `
       <li class="shot-card" data-id="${shot.id}">
@@ -418,9 +575,10 @@ function renderHistory() {
           <span class="shot-card-date">${formatDate(shot.timestamp)}</span>
         </div>
         <div class="shot-card-meta">
-          <span>${shot.doseGrams ?? '—'}g → ${shot.yieldGrams ?? '—'}g (${ratioStr})</span>
-          <span>${shot.shotTimeSec ?? '—'}s</span>
-          <span>${escapeHtml(shot.brewMethod || 'Espresso')}</span>
+          <span class="method-tag ${isEsp ? '' : 'filter'}">${escapeHtml(shot.brewMethod || 'Espresso')}</span>
+          <span>${shot.doseGrams ?? '—'}g → ${outStr} (${ratioStr})</span>
+          ${isEsp && shot.shotTimeSec != null ? `<span>${shot.shotTimeSec}s</span>` : ''}
+          ${shot.grindSetting != null ? `<span>grind ${Number(shot.grindSetting).toFixed(1)}</span>` : ''}
           ${days != null ? `<span>${days}d off roast</span>` : ''}
           ${shot.rating ? starsHtml(shot.rating) : ''}
         </div>
@@ -437,6 +595,7 @@ searchInput.addEventListener('input', renderHistory);
 const overlay = document.getElementById('detail-overlay');
 const detailBody = document.getElementById('detail-body');
 const detailClose = document.getElementById('detail-close');
+const detailEdit = document.getElementById('detail-edit');
 const detailDelete = document.getElementById('detail-delete');
 let activeShotId = null;
 
@@ -460,6 +619,7 @@ function beanInfoBlock(shot) {
     ['Variety', bean.variety],
     ['Elevation', bean.elevation],
     ['Price', bean.price],
+    ['Per 100g', per100Of(bean.priceAmount, bean.bagGrams, bean.currency, true)],
   ].filter(([, v]) => v);
   const ratingLine = bean.recommendRating
     ? `<div>Recommend: ${starsHtml(bean.recommendRating)}</div>` : '';
@@ -479,20 +639,25 @@ historyList.addEventListener('click', (e) => {
   if (!shot) return;
   activeShotId = shot.id;
 
-  const ratio = computeRatio(shot.doseGrams, shot.yieldGrams);
+  const isEsp = shot.brewMethod !== 'Filter';
+  const ratio = computeRatio(shot.doseGrams, isEsp ? shot.yieldGrams : shot.volumeMl);
   const days = daysSinceRoast(shot);
+  const methodRows = isEsp
+    ? detailRow('Preinfusion', shot.preinfusionSec != null ? `${shot.preinfusionSec} s` : '—') +
+      detailRow('Shot time', shot.shotTimeSec != null ? `${shot.shotTimeSec} s` : '—') +
+      detailRow('Yield out', shot.yieldGrams != null ? `${shot.yieldGrams} g` : '—')
+    : detailRow('Total volume', shot.volumeMl != null ? `${shot.volumeMl} ml` : '—');
   detailBody.innerHTML = `
     <h2>${escapeHtml(getBeanLabel(shot))}</h2>
     ${beanInfoBlock(shot)}
     ${detailRow('Logged', formatDate(shot.timestamp))}
+    ${shot.editedAt ? detailRow('Edited', formatDate(shot.editedAt)) : ''}
     ${detailRow('Days off roast', days != null ? `${days} day${days === 1 ? '' : 's'}` : '—')}
     ${detailRow('Brew method', shot.brewMethod || 'Espresso')}
-    ${detailRow('Dose in', shot.doseGrams != null ? `${shot.doseGrams} g` : '—')}
-    ${detailRow('Yield out', shot.yieldGrams != null ? `${shot.yieldGrams} g` : '—')}
-    ${detailRow('Ratio', ratio ? `1 : ${ratio.toFixed(2)}` : '—')}
+    ${detailRow(isEsp ? 'Dose in' : 'Coffee dose in', shot.doseGrams != null ? `${shot.doseGrams} g` : '—')}
     ${detailRow('Grind setting', formatGrind(shot.grindSetting))}
-    ${detailRow('Preinfusion', shot.preinfusionSec != null ? `${shot.preinfusionSec} s` : '—')}
-    ${detailRow('Shot time', shot.shotTimeSec != null ? `${shot.shotTimeSec} s` : '—')}
+    ${methodRows}
+    ${detailRow('Ratio', ratio ? `1 : ${ratio.toFixed(isEsp ? 2 : 1)}` : '—')}
     <div class="detail-row"><span>Rating</span><span>${shot.rating ? starsHtml(shot.rating) : 'Not rated'}</span></div>
     ${shot.notes ? `<div class="detail-notes">${escapeHtml(shot.notes)}</div>` : ''}
   `;
@@ -504,8 +669,17 @@ overlay.addEventListener('click', (e) => {
   if (e.target === overlay) { overlay.hidden = true; activeShotId = null; }
 });
 
+detailEdit.addEventListener('click', () => {
+  const shot = shots.find((s) => s.id === activeShotId);
+  if (!shot) return;
+  overlay.hidden = true;
+  activeShotId = null;
+  startEditShot(shot);
+});
+
 detailDelete.addEventListener('click', async () => {
   if (!activeShotId) return;
+  if (!confirm('Delete this shot from your log?')) return;
   shots = shots.filter((s) => s.id !== activeShotId);
   await saveShots(shots);
   overlay.hidden = true;
@@ -572,6 +746,7 @@ refreshBeanSelect();
 renderHistory();
 renderBeans();
 resetFormDefaults();
+setMethod('Espresso');
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
