@@ -749,7 +749,30 @@ resetFormDefaults();
 setMethod('Espresso');
 
 if ('serviceWorker' in navigator) {
+  // Whether the page was already under a worker's control when it loaded. If
+  // it wasn't, the first controllerchange is just this install finishing and
+  // must not trigger a reload.
+  const hadController = !!navigator.serviceWorker.controller;
+  let reloading = false;
+
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (reloading || !hadController) return;
+    reloading = true;
+    window.location.reload();
+  });
+
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('service-worker.js').catch(() => {});
+    navigator.serviceWorker
+      .register('service-worker.js')
+      .then((reg) => {
+        // Closing an installed PWA from the app switcher doesn't reliably
+        // terminate its web view, so an update check may never run on its
+        // own. Ask on launch and every time the app returns to the front.
+        reg.update().catch(() => {});
+        document.addEventListener('visibilitychange', () => {
+          if (document.visibilityState === 'visible') reg.update().catch(() => {});
+        });
+      })
+      .catch(() => {});
   });
 }
