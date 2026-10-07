@@ -926,14 +926,12 @@ const editBannerText = document.getElementById('edit-banner-text');
 const saveBtn = document.getElementById('save-btn');
 const balanceRow = document.getElementById('balance-row');
 const tagRow = document.getElementById('tag-row');
-const milkChip = document.getElementById('milk-chip');
 const shotRating = initScoreRow(document.getElementById('shot-rating'), document.getElementById('shot-rating-readout'));
 
 let currentMethod = 'Espresso';
 let editingShotId = null;
 let balance = null;
 let pickedTags = new Set();
-let withMilk = false;
 
 const DOSE_RANGE = { Espresso: { min: 16, max: 20 }, Filter: { min: 12, max: 30 } };
 
@@ -959,11 +957,6 @@ function setTags(tags) {
     c.setAttribute('aria-pressed', String(on));
   });
 }
-function setMilk(v) {
-  withMilk = !!v;
-  milkChip.classList.toggle('on', withMilk);
-  milkChip.setAttribute('aria-pressed', String(withMilk));
-}
 balanceRow.addEventListener('click', (e) => {
   const c = e.target.closest('.chip');
   if (!c) return;
@@ -977,7 +970,6 @@ tagRow.addEventListener('click', (e) => {
   pickedTags.has(t) ? pickedTags.delete(t) : pickedTags.add(t);
   setTags([...pickedTags]);
 });
-milkChip.addEventListener('click', () => setMilk(!withMilk));
 
 /* bag picker */
 function bagOptionLabel(b) {
@@ -1103,16 +1095,37 @@ methodSeg.addEventListener('click', (e) => {
 });
 
 // − / + steppers: exact step increments so 4.3 is always 4.3.
+function stepInput(btn) {
+  const input = document.getElementById(btn.dataset.target);
+  const step = parseFloat(input.step) || 1;
+  let v = (parseFloat(input.value) || 0) + Number(btn.dataset.dir) * step;
+  v = Math.round(v / step) * step;
+  v = Math.min(Math.max(v, parseFloat(input.min)), parseFloat(input.max));
+  input.value = String(Math.round(v * 100) / 100);
+  input.dispatchEvent(new Event('input', { bubbles: true }));
+}
+
+// Step on touch-down rather than on click: iOS drops the click if the finger
+// drifts a little, which felt like the page scrolling instead. Holding the
+// button keeps stepping.
 document.querySelectorAll('.stepper-btn').forEach((btn) => {
-  btn.addEventListener('click', () => {
-    const input = document.getElementById(btn.dataset.target);
-    const step = parseFloat(input.step) || 1;
-    let v = (parseFloat(input.value) || 0) + Number(btn.dataset.dir) * step;
-    v = Math.round(v / step) * step;
-    v = Math.min(Math.max(v, parseFloat(input.min)), parseFloat(input.max));
-    input.value = String(Math.round(v * 100) / 100);
-    input.dispatchEvent(new Event('input', { bubbles: true }));
+  let delay = null, repeat = null;
+  const stop = () => {
+    clearTimeout(delay);
+    clearInterval(repeat);
+    btn.classList.remove('pressing');
+  };
+  btn.addEventListener('pointerdown', (e) => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    try { btn.setPointerCapture(e.pointerId); } catch { /* not supported */ }
+    btn.classList.add('pressing');
+    stepInput(btn);
+    delay = setTimeout(() => { repeat = setInterval(() => stepInput(btn), 90); }, 450);
   });
+  ['pointerup', 'pointercancel', 'lostpointercapture'].forEach((t) => btn.addEventListener(t, stop));
+  // Keyboard (Enter / Space) still arrives as a click with no pointer behind it.
+  btn.addEventListener('click', (e) => { if (e.detail === 0) stepInput(btn); });
 });
 
 function updateRatioDisplay() {
@@ -1141,7 +1154,6 @@ function resetShotForm() {
   shotRating.setValue(null);
   setBalance(null);
   setTags([]);
-  setMilk(false);
   setMethod(currentMethod);
   updateGrindValue();
   updatePreinfusionValue();
@@ -1173,7 +1185,6 @@ function startEditShot(shot) {
   shotRating.setValue(shot.rating);
   setBalance(shot.balance ?? null);
   setTags(shot.tags);
-  setMilk(shot.withMilk);
   updateDoseValue();
   updateGrindValue();
   updatePreinfusionValue();
@@ -1213,7 +1224,7 @@ form.addEventListener('submit', async (e) => {
     rating: shotRating.value,
     balance,
     tags: [...pickedTags],
-    withMilk,
+    withMilk: existing?.withMilk ?? false,
     notes: (fd.get('notes') || '').trim(),
   };
 
@@ -1231,7 +1242,7 @@ const historyEmpty = document.getElementById('history-empty');
 const historySummary = document.getElementById('history-summary');
 const searchInput = document.getElementById('history-search');
 
-const hfDefaults = { coffee: '', roaster: '', country: '', process: '', minRating: '', balance: '', milk: '', sort: 'new', from: '', to: '' };
+const hfDefaults = { coffee: '', roaster: '', country: '', process: '', minRating: '', balance: '', sort: 'new', from: '', to: '' };
 const hf = { ...hfDefaults };
 
 const historyFilters = setupFilterPanel({
@@ -1249,7 +1260,6 @@ const historyFilters = setupFilterPanel({
     process: (v) => v,
     minRating: (v) => (Number(v) === 10 ? 'Rated 10' : `Rated ${v}+`),
     balance: (v) => balanceLabel(Number(v)),
-    milk: (v) => (v === 'with' ? 'With milk' : 'Without milk'),
     sort: (v) => (v === 'old' ? 'Oldest first' : 'Highest rated'),
     from: (v) => `From ${formatDay(v)}`,
     to: (v) => `Until ${formatDay(v)}`,
@@ -1276,8 +1286,6 @@ function shotMatches(shot, q) {
   if (hf.process && !eq(c?.process, hf.process)) return false;
   if (hf.minRating && !(shot.rating != null && shot.rating >= Number(hf.minRating))) return false;
   if (hf.balance !== '' && shot.balance !== Number(hf.balance)) return false;
-  if (hf.milk === 'with' && !shot.withMilk) return false;
-  if (hf.milk === 'without' && shot.withMilk) return false;
   const day = shot.timestamp ? new Date(shot.timestamp) : null;
   const localDay = day ? new Date(day.getTime() - day.getTimezoneOffset() * 60000).toISOString().slice(0, 10) : '';
   if (hf.from && localDay < hf.from) return false;
@@ -1290,8 +1298,21 @@ function shotMatches(shot, q) {
   return true;
 }
 
+const hfFrom = document.getElementById('hf-from');
+const hfTo = document.getElementById('hf-to');
+
+/** Keep From ≤ To: each date picker can't go past the other's value. */
+function linkDateRange() {
+  // Typed dates can still slip past min/max, so swap a reversed range.
+  if (hf.from && hf.to && hf.from > hf.to) [hf.from, hf.to] = [hf.to, hf.from];
+  hfFrom.max = hf.to || todayISO();
+  hfTo.min = hf.from || '';
+  hfTo.max = todayISO();
+}
+
 function renderHistory() {
   refreshHistoryFilterOptions();
+  linkDateRange();
   historyFilters.syncInputs();
   historyFilters.renderChips();
   const q = searchInput.value.trim().toLowerCase();
@@ -1319,7 +1340,6 @@ function renderHistory() {
     const taste = [
       shot.balance != null ? balanceLabel(shot.balance) : '',
       ...(shot.tags || []),
-      shot.withMilk ? 'with milk' : '',
     ].filter(Boolean);
     return `
       <li class="shot-card" data-id="${shot.id}">
@@ -1387,7 +1407,6 @@ function openShotDetail(id) {
     ${detailRow('Rating', shot.rating != null ? ratingPill(shot.rating) : 'Not rated')}
     ${detailRow('Balance', shot.balance != null ? e(balanceLabel(shot.balance)) : '—')}
     ${(shot.tags || []).length ? detailRow('Flavours', e(shot.tags.join(', '))) : ''}
-    ${detailRow('Milk', shot.withMilk ? 'With milk' : 'Straight')}
     ${shot.notes ? `<div class="detail-notes">${e(shot.notes)}</div>` : ''}
   `;
   openOverlay(detailOverlay);

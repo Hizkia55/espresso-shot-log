@@ -112,9 +112,10 @@ main {
 
 .row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 12px;
 }
+.row > * { min-width: 0; }
 
 label, .label-row label {
   font-size: 0.82rem;
@@ -179,8 +180,20 @@ input:focus, textarea:focus, select:focus {
   border-color: var(--accent);
 }
 
+/* iOS Safari gives date inputs a native min-width (overflowing a grid column)
+   and collapses them when empty. Strip that so they size like the selects. */
+input[type="date"] {
+  -webkit-appearance: none;
+  appearance: none;
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 2.75em;
+  line-height: 1.2;
+}
 input[type="date"]::-webkit-date-and-time-value {
   text-align: left;
+  margin: 0;
 }
 
 input[type="number"]::-webkit-outer-spin-button,
@@ -206,9 +219,15 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  /* A touch that starts on a stepper never scrolls the page or zooms, so a
+     slightly sloppy tap still counts as a tap. */
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.stepper-btn:active { background: var(--accent-tint-2); }
+.stepper-btn:active, .stepper-btn.pressing { background: var(--accent-tint-2); }
 
 input[type="range"] {
   -webkit-appearance: none;
@@ -692,6 +711,8 @@ h3 {
 }
 .filter-panel .field { margin-bottom: 12px; }
 .filter-panel select, .filter-panel input { padding: 9px 12px; font-size: 0.9rem; }
+.filter-panel input[type="date"] { min-height: 0; height: 2.6em; }
+.filter-panel select { height: 2.6em; }
 .filter-panel select { padding-right: 34px; background-position: right 12px center; }
 .filter-panel .text-link { margin-bottom: 8px; }
 

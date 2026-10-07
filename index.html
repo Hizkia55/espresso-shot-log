@@ -123,12 +123,6 @@
       </div>
 
       <div class="field">
-        <div class="chip-row">
-          <button type="button" class="chip milk-chip" id="milk-chip" aria-pressed="false">🥛 With milk</button>
-        </div>
-      </div>
-
-      <div class="field">
         <label for="notes">Notes</label>
         <textarea id="notes" name="notes" rows="3" placeholder="Anything else: channeling, puck prep, how it was with milk..."></textarea>
       </div>
@@ -158,20 +152,13 @@
         <div class="field"><label for="hf-balance">Balance</label><select id="hf-balance" data-key="balance"></select></div>
       </div>
       <div class="row">
-        <div class="field"><label for="hf-milk">Milk</label>
-          <select id="hf-milk" data-key="milk">
-            <option value="">Any</option><option value="with">With milk</option><option value="without">Without milk</option>
-          </select>
-        </div>
-        <div class="field"><label for="hf-sort">Sort</label>
-          <select id="hf-sort" data-key="sort">
-            <option value="new">Newest first</option><option value="old">Oldest first</option><option value="rating">Highest rated</option>
-          </select>
-        </div>
-      </div>
-      <div class="row">
         <div class="field"><label for="hf-from">From</label><input type="date" id="hf-from" data-key="from" /></div>
         <div class="field"><label for="hf-to">To</label><input type="date" id="hf-to" data-key="to" /></div>
+      </div>
+      <div class="field"><label for="hf-sort">Sort</label>
+        <select id="hf-sort" data-key="sort">
+          <option value="new">Newest first</option><option value="old">Oldest first</option><option value="rating">Highest rated</option>
+        </select>
       </div>
       <button type="button" class="text-link" id="history-filter-clear">Clear all filters</button>
     </div>
