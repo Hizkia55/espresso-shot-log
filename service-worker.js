@@ -1,9 +1,11 @@
-const CACHE_NAME = 'shot-log-v4';
+const CACHE_NAME = 'shot-log-v5';
 const APP_SHELL = [
   './',
   'index.html',
   'styles.css',
   'app.js',
+  'data.js',
+  'lib/countries.js',
   'lib/idb-keyval.js',
   'manifest.json',
   'icons/icon-192.png',

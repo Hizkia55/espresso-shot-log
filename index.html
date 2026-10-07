@@ -38,10 +38,11 @@
       </div>
 
       <div class="field">
-        <label for="bean-select">Bean</label>
-        <select id="bean-select" name="beanId" required>
-          <option value="" disabled selected>Select a bean...</option>
+        <label for="bag-select">Bag</label>
+        <select id="bag-select" name="bagId" required>
+          <option value="" disabled selected>Select a bag...</option>
         </select>
+        <div class="last-shot" id="last-shot" hidden></div>
         <button type="button" id="add-bean-link" class="text-link">+ Add new bean</button>
       </div>
 
@@ -64,7 +65,7 @@
       </div>
 
       <div class="field">
-        <label for="grindSetting">Grind setting (Vario VS4) <span class="slider-value" id="grindSetting-value">4.0</span></label>
+        <label for="grindSetting">Grind setting (Varia VS4) <span class="slider-value" id="grindSetting-value">4.0</span></label>
         <div class="slider-row">
           <button type="button" class="stepper-btn" data-target="grindSetting" data-dir="-1" aria-label="Finer by 0.1">−</button>
           <input type="range" id="grindSetting" name="grindSetting" min="0" max="20" step="0.1" value="4.0" />
@@ -107,20 +108,29 @@
       </div>
 
       <div class="field">
-        <label>How did it taste?</label>
-        <div class="star-rating" id="shot-rating" data-value="0">
-          <button type="button" data-star="1" aria-label="1 star">★</button>
-          <button type="button" data-star="2" aria-label="2 stars">★</button>
-          <button type="button" data-star="3" aria-label="3 stars">★</button>
-          <button type="button" data-star="4" aria-label="4 stars">★</button>
-          <button type="button" data-star="5" aria-label="5 stars">★</button>
+        <label>How did it taste? <span class="rating-readout" id="shot-rating-readout">Not rated</span></label>
+        <div class="score-row" id="shot-rating" role="radiogroup" aria-label="Rating 0 to 10"></div>
+      </div>
+
+      <div class="field">
+        <label>Balance</label>
+        <div class="chip-row balance-row" id="balance-row" role="radiogroup" aria-label="Bitter to sour balance"></div>
+      </div>
+
+      <div class="field">
+        <label>Flavours</label>
+        <div class="chip-row" id="tag-row"></div>
+      </div>
+
+      <div class="field">
+        <div class="chip-row">
+          <button type="button" class="chip milk-chip" id="milk-chip" aria-pressed="false">🥛 With milk</button>
         </div>
-        <input type="hidden" id="rating" name="rating" value="0" />
       </div>
 
       <div class="field">
         <label for="notes">Notes</label>
-        <textarea id="notes" name="notes" rows="3" placeholder="Roast profile, equipment, tasting notes..."></textarea>
+        <textarea id="notes" name="notes" rows="3" placeholder="Anything else: channeling, puck prep, how it was with milk..."></textarea>
       </div>
 
       <button type="submit" class="primary-btn" id="save-btn">Save Shot</button>
@@ -130,30 +140,101 @@
   <!-- HISTORY VIEW -->
   <section id="view-history" class="view">
     <div class="history-toolbar">
-      <input type="search" id="history-search" placeholder="Search bean, roaster, method, notes..." />
-      <div class="backup-btns">
-        <button id="export-btn" class="ghost-btn" type="button">Export</button>
-        <label class="ghost-btn file-label">
-          Import
-          <input type="file" id="import-input" accept="application/json" hidden />
-        </label>
-      </div>
+      <input type="search" id="history-search" placeholder="Search shots..." />
+      <button id="history-filter-btn" class="ghost-btn" type="button" aria-expanded="false">Filters <span class="badge" id="history-filter-count" hidden></span></button>
     </div>
+
+    <div class="filter-panel" id="history-filter-panel" hidden>
+      <div class="row">
+        <div class="field"><label for="hf-coffee">Coffee</label><select id="hf-coffee" data-key="coffee"></select></div>
+        <div class="field"><label for="hf-roaster">Roaster</label><select id="hf-roaster" data-key="roaster"></select></div>
+      </div>
+      <div class="row">
+        <div class="field"><label for="hf-country">Country</label><select id="hf-country" data-key="country"></select></div>
+        <div class="field"><label for="hf-process">Process</label><select id="hf-process" data-key="process"></select></div>
+      </div>
+      <div class="row">
+        <div class="field"><label for="hf-minRating">Min rating</label><select id="hf-minRating" data-key="minRating"></select></div>
+        <div class="field"><label for="hf-balance">Balance</label><select id="hf-balance" data-key="balance"></select></div>
+      </div>
+      <div class="row">
+        <div class="field"><label for="hf-milk">Milk</label>
+          <select id="hf-milk" data-key="milk">
+            <option value="">Any</option><option value="with">With milk</option><option value="without">Without milk</option>
+          </select>
+        </div>
+        <div class="field"><label for="hf-sort">Sort</label>
+          <select id="hf-sort" data-key="sort">
+            <option value="new">Newest first</option><option value="old">Oldest first</option><option value="rating">Highest rated</option>
+          </select>
+        </div>
+      </div>
+      <div class="row">
+        <div class="field"><label for="hf-from">From</label><input type="date" id="hf-from" data-key="from" /></div>
+        <div class="field"><label for="hf-to">To</label><input type="date" id="hf-to" data-key="to" /></div>
+      </div>
+      <button type="button" class="text-link" id="history-filter-clear">Clear all filters</button>
+    </div>
+
+    <div class="active-filters" id="history-active-filters"></div>
+    <p class="list-summary" id="history-summary"></p>
     <ul id="history-list" class="history-list"></ul>
     <p id="history-empty" class="empty-state" hidden>No shots logged yet. Pull an espresso and log it above.</p>
+
+    <div class="backup-btns">
+      <button id="export-btn" class="ghost-btn" type="button">Export backup</button>
+      <label class="ghost-btn file-label">
+        Import backup
+        <input type="file" id="import-input" accept="application/json" hidden />
+      </label>
+    </div>
   </section>
 
   <!-- BEANS VIEW -->
   <section id="view-beans" class="view">
     <button id="new-bean-btn" class="primary-btn" type="button">+ Add Bean</button>
+
+    <div class="beans-toolbar">
+      <div class="method-seg" id="bean-status-seg">
+        <button type="button" class="seg-btn active" data-status="open">Open</button>
+        <button type="button" class="seg-btn" data-status="finished">Finished</button>
+        <button type="button" class="seg-btn" data-status="all">All</button>
+      </div>
+      <div class="history-toolbar">
+        <input type="search" id="bean-search" placeholder="Search beans..." />
+        <button id="bean-filter-btn" class="ghost-btn" type="button" aria-expanded="false">Filters <span class="badge" id="bean-filter-count" hidden></span></button>
+      </div>
+      <div class="filter-panel" id="bean-filter-panel" hidden>
+        <div class="row">
+          <div class="field"><label for="bf-roaster">Roaster</label><select id="bf-roaster" data-key="roaster"></select></div>
+          <div class="field"><label for="bf-country">Country</label><select id="bf-country" data-key="country"></select></div>
+        </div>
+        <div class="row">
+          <div class="field"><label for="bf-process">Process</label><select id="bf-process" data-key="process"></select></div>
+          <div class="field"><label for="bf-sort">Sort</label>
+            <select id="bf-sort" data-key="sort">
+              <option value="recent">Most recent bag</option>
+              <option value="name">Name A–Z</option>
+              <option value="rating">Your rating</option>
+              <option value="avg">Avg shot rating</option>
+              <option value="price">Price / 100g (low → high)</option>
+            </select>
+          </div>
+        </div>
+        <button type="button" class="text-link" id="bean-filter-clear">Clear all filters</button>
+      </div>
+    </div>
+
+    <div class="active-filters" id="bean-active-filters"></div>
     <ul id="bean-list-view" class="history-list"></ul>
     <p id="beans-empty" class="empty-state" hidden>No beans in your catalog yet. Add one to start logging shots against it.</p>
   </section>
 </main>
 
+<!-- Shot detail -->
 <div id="detail-overlay" class="overlay" hidden>
   <div class="detail-card">
-    <button id="detail-close" class="ghost-btn detail-close" type="button">Close</button>
+    <button class="ghost-btn detail-close" data-close type="button">Close</button>
     <div id="detail-body"></div>
     <div class="detail-actions">
       <button id="detail-edit" class="primary-btn" type="button">Edit Shot</button>
@@ -162,74 +243,130 @@
   </div>
 </div>
 
-<div id="bean-overlay" class="overlay" hidden>
+<!-- Coffee detail: info, bags, dial-in -->
+<div id="coffee-overlay" class="overlay" hidden>
   <div class="detail-card">
-    <button id="bean-overlay-close" class="ghost-btn detail-close" type="button">Close</button>
-    <h2 id="bean-form-title">Add Bean</h2>
-    <form id="bean-form" autocomplete="off">
+    <button class="ghost-btn detail-close" data-close type="button">Close</button>
+    <div id="coffee-body"></div>
+    <div class="detail-actions">
+      <button id="coffee-new-bag" class="primary-btn" type="button">Buy again</button>
+      <button id="coffee-edit" class="ghost-btn grow" type="button">Edit coffee</button>
+    </div>
+  </div>
+</div>
+
+<!-- Coffee form (new coffee also captures its first bag) -->
+<div id="coffee-form-overlay" class="overlay" hidden>
+  <div class="detail-card">
+    <button class="ghost-btn detail-close" data-close type="button">Close</button>
+    <h2 class="form-title" id="coffee-form-title">Add Bean</h2>
+    <form id="coffee-form" autocomplete="off">
       <div class="field">
-        <label for="bean-name">Name</label>
-        <input type="text" id="bean-name" name="name" placeholder="e.g. Ethiopia Guji" required />
+        <label for="coffee-name">Name</label>
+        <input type="text" id="coffee-name" name="name" placeholder="e.g. Nehi" required />
+        <div class="dupe-hint" id="coffee-dupe" hidden></div>
       </div>
       <div class="field">
-        <label for="bean-roastDate">Roast date</label>
-        <input type="date" id="bean-roastDate" name="roastDate" />
-      </div>
-      <div class="field">
-        <label for="bean-roaster">Roaster</label>
-        <input type="text" id="bean-roaster" name="roaster" list="roaster-list" placeholder="e.g. Sprout" />
+        <label for="coffee-roaster">Roaster</label>
+        <input type="text" id="coffee-roaster" name="roaster" list="roaster-list" placeholder="e.g. Impact roasters" />
         <datalist id="roaster-list"></datalist>
       </div>
       <div class="field">
-        <label for="bean-origin">Origin</label>
-        <input type="text" id="bean-origin" name="origin" list="origin-list" placeholder="e.g. Guji, Ethiopia" />
-        <datalist id="origin-list"></datalist>
+        <label for="country-input">Country</label>
+        <div class="country-picker" id="country-picker">
+          <div class="chip-row" id="country-chips"></div>
+          <input type="text" id="country-input" list="country-list" placeholder="Type to search, e.g. Ethiopia" autocapitalize="words" />
+          <datalist id="country-list"></datalist>
+        </div>
+        <span class="field-hint" id="country-hint">Pick from the list. Add more than one for a blend.</span>
       </div>
       <div class="field">
-        <label for="bean-process">Process</label>
-        <input type="text" id="bean-process" name="process" list="process-list" placeholder="e.g. Washed" />
-        <datalist id="process-list"></datalist>
+        <label for="coffee-region">Region / farm</label>
+        <input type="text" id="coffee-region" name="region" placeholder="e.g. Sidama, Guji" />
+      </div>
+      <div class="row">
+        <div class="field">
+          <label for="coffee-process">Process</label>
+          <input type="text" id="coffee-process" name="process" list="process-list" placeholder="e.g. Washed" />
+          <datalist id="process-list"></datalist>
+        </div>
+        <div class="field">
+          <label for="coffee-elevation">Elevation</label>
+          <input type="text" id="coffee-elevation" name="elevation" placeholder="e.g. 1900 masl" />
+        </div>
       </div>
       <div class="field">
-        <label for="bean-variety">Variety</label>
-        <input type="text" id="bean-variety" name="variety" list="variety-list" placeholder="e.g. Heirloom" />
+        <label for="coffee-variety">Variety</label>
+        <input type="text" id="coffee-variety" name="variety" list="variety-list" placeholder="e.g. Heirloom" />
         <datalist id="variety-list"></datalist>
       </div>
       <div class="field">
-        <label for="bean-elevation">Elevation</label>
-        <input type="text" id="bean-elevation" name="elevation" placeholder="e.g. 1900-2100 masl" />
+        <label>Would you recommend it? <span class="rating-readout" id="coffee-rating-readout">Not rated</span></label>
+        <div class="score-row" id="coffee-rating" role="radiogroup" aria-label="Recommendation 0 to 10"></div>
       </div>
-      <div class="field">
-        <div class="label-row">
-          <label for="bean-priceAmount">Price</label>
-          <div class="method-seg small" id="currency-seg">
-            <button type="button" class="seg-btn active" data-currency="EUR">€ EUR</button>
-            <button type="button" class="seg-btn" data-currency="DKK">kr DKK</button>
-          </div>
-        </div>
-        <div class="row">
-          <input type="number" id="bean-priceAmount" name="priceAmount" inputmode="decimal" step="0.01" min="0" placeholder="Price" aria-label="Price amount" />
-          <input type="number" id="bean-bagGrams" name="bagGrams" inputmode="decimal" step="1" min="0" placeholder="Bag size (g)" aria-label="Bag size in grams" />
-        </div>
-        <p class="per100" id="per100-display" hidden></p>
-        <input type="hidden" id="bean-currency" name="currency" value="EUR" />
-      </div>
-      <div class="field">
-        <label>Would you recommend it?</label>
-        <div class="star-rating" id="bean-rating" data-value="0">
-          <button type="button" data-star="1" aria-label="1 star">★</button>
-          <button type="button" data-star="2" aria-label="2 stars">★</button>
-          <button type="button" data-star="3" aria-label="3 stars">★</button>
-          <button type="button" data-star="4" aria-label="4 stars">★</button>
-          <button type="button" data-star="5" aria-label="5 stars">★</button>
-        </div>
-        <input type="hidden" id="bean-recommendRating" name="recommendRating" value="0" />
-      </div>
+
+      <fieldset class="bag-fields" id="coffee-first-bag">
+        <legend>First bag</legend>
+        <div data-bag-fields></div>
+      </fieldset>
+
       <button type="submit" class="primary-btn">Save Bean</button>
     </form>
     <div class="detail-actions">
-      <button id="bean-delete" class="danger-btn" type="button" hidden>Delete Bean</button>
+      <button id="coffee-delete" class="danger-btn" type="button" hidden>Delete coffee</button>
     </div>
+  </div>
+</div>
+
+<!-- Bag form -->
+<div id="bag-form-overlay" class="overlay" hidden>
+  <div class="detail-card">
+    <button class="ghost-btn detail-close" data-close type="button">Close</button>
+    <h2 class="form-title" id="bag-form-title">New bag</h2>
+    <form id="bag-form" autocomplete="off">
+      <div data-bag-fields></div>
+      <button type="submit" class="primary-btn">Save Bag</button>
+    </form>
+    <div class="detail-actions">
+      <button id="bag-delete" class="danger-btn" type="button" hidden>Delete bag</button>
+    </div>
+  </div>
+</div>
+
+<!-- Bag fields template (cloned into both forms) -->
+<template id="bag-fields-tpl">
+  <div class="field">
+    <label>Roast date</label>
+    <input type="date" name="roastDate" />
+  </div>
+  <div class="field">
+    <div class="label-row">
+      <label>Price</label>
+      <div class="method-seg small currency-seg">
+        <button type="button" class="seg-btn" data-currency="DKK">kr DKK</button>
+        <button type="button" class="seg-btn" data-currency="EUR">€ EUR</button>
+      </div>
+    </div>
+    <div class="row">
+      <input type="number" name="priceAmount" inputmode="decimal" step="0.01" min="0" placeholder="Price" aria-label="Price amount" />
+      <input type="number" name="bagGrams" inputmode="decimal" step="1" min="0" placeholder="Bag size (g)" aria-label="Bag size in grams" />
+    </div>
+    <p class="per100" data-per100 hidden></p>
+    <input type="hidden" name="currency" value="DKK" />
+  </div>
+</template>
+
+<!-- First launch after the update: which bags do you still have? -->
+<div id="review-overlay" class="overlay" hidden>
+  <div class="detail-card">
+    <h2 class="form-title">Which bags are still open?</h2>
+    <p class="review-intro">Beans are now split into <strong>coffees</strong> and <strong>bags</strong>. Tick the bags you still have; the rest move to Finished and stop showing up when you log a shot. I pre-ticked anything you used in the last two weeks.</p>
+    <ul class="review-list" id="review-list"></ul>
+    <details class="review-changes" id="review-changes" hidden>
+      <summary>Data cleanup applied</summary>
+      <ul id="review-changes-list"></ul>
+    </details>
+    <button id="review-save" class="primary-btn" type="button">Done</button>
   </div>
 </div>
 
